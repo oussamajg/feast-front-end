@@ -2,19 +2,21 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Define user type
 export interface User {
   id: string;
-  name: string;
-  email: string;
+  name: string | null;
+  email: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   forgotPassword: (email: string) => Promise<boolean>;
   loading: boolean;
 }
@@ -24,48 +26,10 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   login: async () => false,
   register: async () => false,
-  logout: () => {},
+  logout: async () => {},
   forgotPassword: async () => false,
   loading: true,
 });
-
-// Mock API for authentication (in a real app, this would be a server call)
-const mockAuth = {
-  login: async (email: string, password: string): Promise<User | null> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo purposes, accept any email ending with @test.com and password "password"
-    if (email.endsWith('@test.com') && password === 'password') {
-      return {
-        id: '1',
-        name: email.split('@')[0],
-        email
-      };
-    }
-    return null;
-  },
-  
-  register: async (name: string, email: string, password: string): Promise<User | null> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo purposes, accept any registration
-    return {
-      id: '1',
-      name,
-      email
-    };
-  },
-
-  forgotPassword: async (email: string): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For demo purposes, always return success
-    return true;
-  }
-};
 
 // Auth provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -74,35 +38,84 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Convert Supabase user to our User type
+  const formatUser = (supabaseUser: SupabaseUser | null): User | null => {
+    if (!supabaseUser) return null;
+    
+    return {
+      id: supabaseUser.id,
+      email: supabaseUser.email,
+      name: supabaseUser.user_metadata?.name || null,
+    };
+  };
+
   useEffect(() => {
-    // Check for saved user in localStorage
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    // Check current auth session on load
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error checking session:', error);
+          setLoading(false);
+          return;
+        }
+        
+        if (session?.user) {
+          setUser(formatUser(session.user));
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setUser(formatUser(session.user));
+        } else {
+          setUser(null);
+        }
+      }
+    );
+
+    // Cleanup subscription
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const user = await mockAuth.login(email, password);
-      if (user) {
-        setUser(user);
-        localStorage.setItem('user', JSON.stringify(user));
-        toast({
-          title: "Login successful",
-          description: `Welcome back, ${user.name}!`,
-        });
-        return true;
-      } else {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
         toast({
           title: "Login failed",
-          description: "Invalid email or password.",
+          description: error.message,
           variant: "destructive",
         });
         return false;
       }
+
+      if (data.user) {
+        toast({
+          title: "Login successful",
+          description: `Welcome back, ${data.user.user_metadata.name || data.user.email}!`,
+        });
+        return true;
+      }
+      
+      return false;
     } catch (error) {
       toast({
         title: "Login error",
@@ -118,23 +131,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string) => {
     setLoading(true);
     try {
-      const user = await mockAuth.register(name, email, password);
-      if (user) {
-        setUser(user);
-        localStorage.setItem('user', JSON.stringify(user));
-        toast({
-          title: "Registration successful",
-          description: `Welcome, ${user.name}!`,
-        });
-        return true;
-      } else {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+
+      if (error) {
         toast({
           title: "Registration failed",
-          description: "Could not register. Please try again.",
+          description: error.message,
           variant: "destructive",
         });
         return false;
       }
+
+      if (data.user) {
+        toast({
+          title: "Registration successful",
+          description: `Welcome, ${name}!`,
+        });
+        return true;
+      }
+      
+      return false;
     } catch (error) {
       toast({
         title: "Registration error",
@@ -147,34 +171,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    navigate('/login');
-    toast({
-      title: "Logged out",
-      description: "You have been logged out successfully.",
-    });
+  const logout = async () => {
+    setLoading(true);
+    try {
+      await supabase.auth.signOut();
+      navigate('/login');
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Logout error",
+        description: "An error occurred during logout.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const forgotPassword = async (email: string) => {
     setLoading(true);
     try {
-      const success = await mockAuth.forgotPassword(email);
-      if (success) {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
         toast({
-          title: "Password reset link sent",
-          description: `A password reset link has been sent to ${email}.`,
-        });
-        return true;
-      } else {
-        toast({
-          title: "Request failed",
-          description: "Could not process your request. Please try again.",
+          title: "Password reset failed",
+          description: error.message,
           variant: "destructive",
         });
         return false;
       }
+
+      toast({
+        title: "Password reset link sent",
+        description: `A password reset link has been sent to ${email}.`,
+      });
+      return true;
     } catch (error) {
       toast({
         title: "Request error",

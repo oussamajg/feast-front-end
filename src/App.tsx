@@ -16,7 +16,16 @@ import Profile from "./pages/Profile";
 import PublicMenu from "./pages/PublicMenu";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Create a new QueryClient with default configuration
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -28,6 +37,7 @@ const App = () => (
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<PublicMenu />} />
+            <Route path="/menu/:restaurantId" element={<PublicMenu />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
