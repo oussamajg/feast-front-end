@@ -6,8 +6,8 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Redirect to the public menu page
-    navigate('/');
+    // Redirect to the login page instead of root path
+    navigate('/login');
   }, [navigate]);
 
   return null;

@@ -2,16 +2,17 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Replace with your Supabase URL and anon key
-// Default to empty strings to prevent the app from crashing completely
-// This allows the app to load, even though Supabase features won't work
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Default to placeholder values to prevent the app from crashing completely
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-url.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 
 // Log a warning if environment variables are missing
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
   console.error('Missing Supabase environment variables. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.');
+  console.warn('Application will load with limited functionality. Please connect to Supabase via the Lovable interface.');
 }
 
+// Initialize supabase client with fallback values to prevent crashes
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Define database types for better TypeScript support
