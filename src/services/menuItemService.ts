@@ -1,5 +1,4 @@
-
-import { supabase, type MenuItem } from '@/lib/supabase';
+import { supabase, type MenuItem, type Category } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Upload an image to Supabase storage
@@ -178,12 +177,20 @@ export const useDeleteMenuItem = () => {
   });
 };
 
+// Define a type for the return value from the public menu items query
+interface PublicMenuData {
+  categories: Category[];
+  menuItems: MenuItem[];
+}
+
 // Get public menu items for a restaurant
 export const usePublicMenuItems = (restaurantId?: string) => {
-  return useQuery({
+  return useQuery<PublicMenuData>({
     queryKey: ['publicMenu', restaurantId],
     queryFn: async () => {
-      if (!restaurantId) return [];
+      if (!restaurantId) {
+        return { categories: [], menuItems: [] };
+      }
       
       // Get all categories for this restaurant
       const { data: categories, error: catError } = await supabase
@@ -205,8 +212,8 @@ export const usePublicMenuItems = (restaurantId?: string) => {
       
       // Organize by category
       return {
-        categories: categories,
-        menuItems: menuItems,
+        categories: categories as Category[],
+        menuItems: menuItems as MenuItem[],
       };
     },
     enabled: !!restaurantId,

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -22,9 +21,9 @@ const PublicMenu = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const isMobile = useIsMobile();
   
-  // Default to first category or mock data if no data yet
-  const categories = data?.categories as Category[] || [];
-  const menuItems = data?.menuItems as MenuItem[] || [];
+  // Default to empty arrays if no data yet or data is not in the expected format
+  const categories = Array.isArray(data) ? [] : (data?.categories as Category[] || []);
+  const menuItems = Array.isArray(data) ? [] : (data?.menuItems as MenuItem[] || []);
   
   const [activeCategory, setActiveCategory] = useState<string | null>(
     categories.length > 0 ? categories[0].id : null
