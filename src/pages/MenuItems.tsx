@@ -1,434 +1,224 @@
 
 import React, { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Trash2, Image } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-// Mock categories
-const categories = [
-  { id: '1', name: 'Appetizers' },
-  { id: '2', name: 'Main Courses' },
-  { id: '3', name: 'Desserts' },
-  { id: '4', name: 'Drinks' },
-  { id: '5', name: 'Specials' },
-];
-
-// Mock menu items
-const initialMenuItems = [
-  { 
-    id: '1', 
-    name: 'Caesar Salad', 
-    description: 'Fresh romaine lettuce with caesar dressing, croutons, and parmesan cheese',
-    price: 8.99,
-    categoryId: '1',
-    image: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?q=80&w=200&auto=format'
-  },
-  { 
-    id: '2', 
-    name: 'Margherita Pizza', 
-    description: 'Classic pizza with tomato sauce, mozzarella, and fresh basil',
-    price: 12.99,
-    categoryId: '2',
-    image: 'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?q=80&w=200&auto=format'
-  },
-  { 
-    id: '3', 
-    name: 'Chocolate Lava Cake', 
-    description: 'Warm chocolate cake with a molten chocolate center',
-    price: 6.99,
-    categoryId: '3',
-    image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?q=80&w=200&auto=format'
-  },
-];
-
-interface MenuItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  categoryId: string;
-  image: string;
-}
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { useMenuItems, useCreateMenuItem, useUpdateMenuItem, useDeleteMenuItem } from '@/services/menuItemService';
+import MenuItemForm from '@/components/admin/MenuItemForm';
+import { Card } from '@/components/ui/card';
 
 const MenuItems = () => {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(initialMenuItems);
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [currentItem, setCurrentItem] = useState<MenuItem | null>(null);
-  const [filterCategory, setFilterCategory] = useState<string>('');
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    price: '',
-    categoryId: '',
-    image: ''
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const { toast } = useToast();
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
-  const filteredMenuItems = filterCategory 
-    ? menuItems.filter(item => item.categoryId === filterCategory)
-    : menuItems;
+  const { data: menuItems, isLoading } = useMenuItems(user?.id);
+  const createMutation = useCreateMenuItem();
+  const updateMutation = useUpdateMenuItem();
+  const deleteMutation = useDeleteMenuItem();
 
-  const handleOpenDialog = (item: MenuItem | null = null) => {
-    if (item) {
-      setCurrentItem(item);
-      setFormData({
-        name: item.name,
-        description: item.description,
-        price: item.price.toString(),
-        categoryId: item.categoryId,
-        image: item.image
-      });
-    } else {
-      setCurrentItem(null);
-      setFormData({
-        name: '',
-        description: '',
-        price: '',
-        categoryId: '',
-        image: ''
-      });
-    }
-    setErrors({});
+  const handleOpenDialog = (item = null) => {
+    setSelectedItem(item);
     setIsDialogOpen(true);
   };
 
   const handleCloseDialog = () => {
+    setSelectedItem(null);
     setIsDialogOpen(false);
   };
 
-  const handleOpenDeleteDialog = (item: MenuItem) => {
-    setCurrentItem(item);
+  const handleOpenDeleteDialog = (item: any) => {
+    setSelectedItem(item);
     setIsDeleteDialogOpen(true);
   };
 
   const handleCloseDeleteDialog = () => {
+    setSelectedItem(null);
     setIsDeleteDialogOpen(false);
-    setCurrentItem(null);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    }
-    
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    }
-    
-    if (!formData.price) {
-      newErrors.price = 'Price is required';
-    } else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
-      newErrors.price = 'Price must be a positive number';
-    }
-    
-    if (!formData.categoryId) {
-      newErrors.categoryId = 'Category is required';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSaveMenuItem = () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    const itemData = {
-      name: formData.name,
-      description: formData.description,
-      price: parseFloat(formData.price),
-      categoryId: formData.categoryId,
-      image: formData.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&auto=format' // Default image
-    };
-
-    if (currentItem) {
-      // Update existing item
-      setMenuItems(menuItems.map(item => 
-        item.id === currentItem.id ? { ...item, ...itemData } : item
-      ));
+  const handleSubmit = async (data: any) => {
+    try {
+      if (selectedItem) {
+        await updateMutation.mutateAsync({
+          id: selectedItem.id,
+          ...data,
+          userId: user?.id,
+        });
+        toast({
+          title: "Success",
+          description: "Menu item updated successfully",
+        });
+      } else {
+        await createMutation.mutateAsync({
+          ...data,
+          userId: user?.id,
+        });
+        toast({
+          title: "Success",
+          description: "Menu item created successfully",
+        });
+      }
+      handleCloseDialog();
+    } catch (error) {
       toast({
-        title: "Menu item updated",
-        description: `${itemData.name} has been updated successfully.`,
-      });
-    } else {
-      // Add new item
-      const newItem = {
-        id: Date.now().toString(),
-        ...itemData
-      };
-      setMenuItems([...menuItems, newItem]);
-      toast({
-        title: "Menu item created",
-        description: `${itemData.name} has been added successfully.`,
+        title: "Error",
+        description: "Failed to save menu item",
+        variant: "destructive",
       });
     }
-    
-    handleCloseDialog();
   };
 
-  const handleDeleteMenuItem = () => {
-    if (currentItem) {
-      setMenuItems(menuItems.filter(item => item.id !== currentItem.id));
+  const handleDelete = async () => {
+    if (!selectedItem) return;
+    
+    try {
+      await deleteMutation.mutateAsync({
+        id: selectedItem.id,
+        userId: user?.id,
+      });
       toast({
-        title: "Menu item deleted",
-        description: `${currentItem.name} has been deleted successfully.`,
+        title: "Success",
+        description: "Menu item deleted successfully",
       });
       handleCloseDeleteDialog();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete menu item",
+        variant: "destructive",
+      });
     }
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div>Loading...</div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Menu Items</h1>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <div className="w-full sm:w-48">
-            <Select 
-              value={filterCategory} 
-              onValueChange={setFilterCategory}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button 
-            className="bg-menu-purple hover:bg-menu-dark-purple whitespace-nowrap"
-            onClick={() => handleOpenDialog()}
-          >
-            <Plus className="mr-2 h-4 w-4" /> Add Menu Item
-          </Button>
-        </div>
+      <div className="mb-6 flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Menu Items</h1>
+        <Button onClick={() => handleOpenDialog()} className="bg-menu-purple hover:bg-menu-dark-purple">
+          <Plus className="mr-2 h-4 w-4" /> Add Menu Item
+        </Button>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
-        {filteredMenuItems.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Image</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+      <Card className="overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {menuItems?.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell className="font-medium">{item.name}</TableCell>
+                <TableCell>{item.category_id}</TableCell>
+                <TableCell>${item.price.toFixed(2)}</TableCell>
+                <TableCell className="max-w-[300px] truncate">
+                  {item.description}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenDialog(item)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenDeleteDialog(item)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredMenuItems.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <div className="h-10 w-10 rounded overflow-hidden">
-                      {item.image ? (
-                        <img 
-                          src={item.image} 
-                          alt={item.name} 
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-gray-200 flex items-center justify-center">
-                          <Image size={16} className="text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>
-                    {categories.find(cat => cat.id === item.categoryId)?.name || 'Unknown'}
-                  </TableCell>
-                  <TableCell>${item.price.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => handleOpenDialog(item)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-                        onClick={() => handleOpenDeleteDialog(item)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        ) : (
-          <div className="p-8 text-center">
-            <p className="text-gray-500">
-              {filterCategory
-                ? "No menu items found in this category"
-                : "No menu items found. Add your first menu item!"}
-            </p>
-          </div>
-        )}
-      </div>
+            ))}
+            {menuItems?.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8">
+                  No menu items found. Add your first menu item!
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Card>
 
-      {/* Add/Edit Menu Item Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[550px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>
-              {currentItem ? 'Edit Menu Item' : 'Add New Menu Item'}
+              {selectedItem ? 'Edit Menu Item' : 'Add New Menu Item'}
             </DialogTitle>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div>
-              <label htmlFor="name" className="text-sm font-medium block mb-2">
-                Item Name
-              </label>
-              <Input
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="Enter item name"
-                className={errors.name ? "border-red-500" : ""}
-              />
-              {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="description" className="text-sm font-medium block mb-2">
-                Description
-              </label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Enter item description"
-                className={errors.description ? "border-red-500" : ""}
-                rows={3}
-              />
-              {errors.description && <p className="text-sm text-red-500 mt-1">{errors.description}</p>}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="price" className="text-sm font-medium block mb-2">
-                  Price
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2">$</span>
-                  <Input
-                    id="price"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    className={`pl-7 ${errors.price ? "border-red-500" : ""}`}
-                  />
-                </div>
-                {errors.price && <p className="text-sm text-red-500 mt-1">{errors.price}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="categoryId" className="text-sm font-medium block mb-2">
-                  Category
-                </label>
-                <Select 
-                  value={formData.categoryId} 
-                  onValueChange={(value) => handleSelectChange('categoryId', value)}
-                >
-                  <SelectTrigger id="categoryId" className={errors.categoryId ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.categoryId && <p className="text-sm text-red-500 mt-1">{errors.categoryId}</p>}
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="image" className="text-sm font-medium block mb-2">
-                Image URL (optional)
-              </label>
-              <Input
-                id="image"
-                name="image"
-                value={formData.image}
-                onChange={handleInputChange}
-                placeholder="Enter image URL"
-              />
-              <p className="text-xs text-gray-500 mt-1">Leave empty for default image</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCloseDialog}>
-              Cancel
-            </Button>
-            <Button 
-              className="bg-menu-purple hover:bg-menu-dark-purple" 
-              onClick={handleSaveMenuItem}
-            >
-              {currentItem ? 'Update' : 'Add'}
-            </Button>
-          </DialogFooter>
+          <MenuItemForm
+            categories={[]} // We'll need to fetch categories
+            onSubmit={handleSubmit}
+            initialData={selectedItem}
+            isSubmitting={createMutation.isPending || updateMutation.isPending}
+          />
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Menu Item</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{currentItem?.name}"? This action cannot be undone.
+              Are you sure you want to delete "{selectedItem?.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCloseDeleteDialog}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCloseDeleteDialog}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
+              onClick={handleDelete}
               className="bg-red-500 hover:bg-red-600"
-              onClick={handleDeleteMenuItem}
             >
               Delete
             </AlertDialogAction>
