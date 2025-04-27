@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   Menu, X, Home, Book, Tag, Settings, LogOut,
-  User
+  User, ChartBar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { name: 'Dashboard', path: '/dashboard', icon: Home },
     { name: 'Menu Items', path: '/menu-items', icon: Book },
     { name: 'Categories', path: '/categories', icon: Tag },
+    { name: 'Statistics', path: '/statistics', icon: ChartBar },
     { name: 'Profile', path: '/profile', icon: User },
   ];
 
