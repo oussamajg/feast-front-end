@@ -142,7 +142,12 @@ const Statistics = () => {
               <CardTitle>Orders by Category</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer className="h-[300px]">
+              <ChartContainer 
+                className="h-[300px]" 
+                config={{
+                  value: { theme: { light: '#8b5cf6', dark: '#a78bfa' } },
+                }}
+              >
                 <PieChart>
                   <Pie
                     data={ordersByCategory}

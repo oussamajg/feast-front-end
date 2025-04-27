@@ -23,6 +23,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import Categories from "./pages/Categories";
 import MenuItems from "./pages/MenuItems";
+import Statistics from "./pages/Statistics"; // Import the Statistics component
 import Profile from "./pages/Profile";
 import PublicMenu from "./pages/PublicMenu";
 import NotFound from "./pages/NotFound";
