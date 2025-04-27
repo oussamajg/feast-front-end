@@ -43,7 +43,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             
             {/* Protected Routes */}
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<<Dashboard />} />
             <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
             <Route path="/menu-items" element={<ProtectedRoute><MenuItems /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
