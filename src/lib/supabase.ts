@@ -20,6 +20,8 @@ export type Category = {
   id: string;
   user_id: string;
   name: string;
+  description?: string;
+  image_url?: string;
   created_at?: string;
 };
 
@@ -31,5 +33,15 @@ export type MenuItem = {
   description: string;
   price: number;
   image_url?: string;
+  ingredients?: string;
+  allergens?: string;
+  featured?: boolean;
   created_at?: string;
+};
+
+export type User = {
+  id: string;
+  email: string;
+  name?: string;
+  role?: 'admin' | 'client';
 };

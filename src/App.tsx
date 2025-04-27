@@ -5,10 +5,21 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+
+// Client Pages
+import Home from "./pages/client/Home";
+import MenuPage from "./pages/client/MenuPage";
+import DishDetails from "./pages/client/DishDetails";
+import CartPage from "./pages/client/CartPage";
+
+// Auth Pages
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
+
+// Admin Pages
 import Dashboard from "./pages/Dashboard";
 import Categories from "./pages/Categories";
 import MenuItems from "./pages/MenuItems";
@@ -32,25 +43,36 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<PublicMenu />} />
-            <Route path="/menu/:restaurantId" element={<PublicMenu />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            
-            {/* Protected Routes */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
-            <Route path="/menu-items" element={<ProtectedRoute><MenuItems /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            
-            {/* Catch-all route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <CartProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              {/* Client Routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/menu" element={<MenuPage />} />
+              <Route path="/menu/:categoryId" element={<MenuPage />} />
+              <Route path="/dish/:dishId" element={<DishDetails />} />
+              <Route path="/cart" element={<CartPage />} />
+              
+              {/* Auth Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin" element={<Login />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
+              <Route path="/menu-items" element={<ProtectedRoute><MenuItems /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              
+              {/* Legacy Routes */}
+              <Route path="/menu/:restaurantId" element={<PublicMenu />} />
+              
+              {/* Catch-all Route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </CartProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
