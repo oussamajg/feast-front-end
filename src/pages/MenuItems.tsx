@@ -30,6 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useMenuItems, useCreateMenuItem, useUpdateMenuItem, useDeleteMenuItem } from '@/services/menuItemService';
+import { useCategories } from '@/services/categoryService';
 import MenuItemForm from '@/components/admin/MenuItemForm';
 import { Card } from '@/components/ui/card';
 
@@ -41,6 +42,7 @@ const MenuItems = () => {
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
   const { data: menuItems, isLoading } = useMenuItems(user?.id);
+  const { data: categories, isLoading: isCategoriesLoading } = useCategories(user?.id);
   const createMutation = useCreateMenuItem();
   const updateMutation = useUpdateMenuItem();
   const deleteMutation = useDeleteMenuItem();
@@ -65,13 +67,15 @@ const MenuItems = () => {
     setIsDeleteDialogOpen(false);
   };
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: any, imageFile?: File) => {
     try {
       if (selectedItem) {
         await updateMutation.mutateAsync({
           id: selectedItem.id,
           ...data,
           userId: user?.id,
+          imageFile,
+          currentImageUrl: selectedItem.image_url
         });
         toast({
           title: "Success",
@@ -81,6 +85,7 @@ const MenuItems = () => {
         await createMutation.mutateAsync({
           ...data,
           userId: user?.id,
+          imageFile
         });
         toast({
           title: "Success",
@@ -119,13 +124,30 @@ const MenuItems = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isCategoriesLoading) {
     return (
       <DashboardLayout>
-        <div>Loading...</div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-menu-purple mx-auto"></div>
+            <p className="mt-4 text-gray-500">Loading menu items...</p>
+          </div>
+        </div>
       </DashboardLayout>
     );
   }
+
+  // Convert categories to format expected by MenuItemForm
+  const formattedCategories = categories?.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+  })) || [];
+
+  // Find category name for each menu item
+  const getCategoryName = (categoryId: string) => {
+    const category = categories?.find(c => c.id === categoryId);
+    return category?.name || "Uncategorized";
+  };
 
   return (
     <DashboardLayout>
@@ -151,8 +173,8 @@ const MenuItems = () => {
             {menuItems?.map((item) => (
               <TableRow key={item.id}>
                 <TableCell className="font-medium">{item.name}</TableCell>
-                <TableCell>{item.category_id}</TableCell>
-                <TableCell>${item.price.toFixed(2)}</TableCell>
+                <TableCell>{getCategoryName(item.category_id)}</TableCell>
+                <TableCell>${Number(item.price).toFixed(2)}</TableCell>
                 <TableCell className="max-w-[300px] truncate">
                   {item.description}
                 </TableCell>
@@ -196,9 +218,15 @@ const MenuItems = () => {
             </DialogTitle>
           </DialogHeader>
           <MenuItemForm
-            categories={[]} // We'll need to fetch categories
+            categories={formattedCategories}
             onSubmit={handleSubmit}
-            initialData={selectedItem}
+            initialData={selectedItem ? {
+              name: selectedItem.name,
+              description: selectedItem.description,
+              price: selectedItem.price.toString(),
+              categoryId: selectedItem.category_id,
+              imageUrl: selectedItem.image_url
+            } : undefined}
             isSubmitting={createMutation.isPending || updateMutation.isPending}
           />
         </DialogContent>
